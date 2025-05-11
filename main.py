@@ -159,7 +159,7 @@ if uploaded_cat or uploaded_proy or uploaded_func:
             "📈 Análisis y Monitoreo",
             "🎯 Decisiones Estratégicas",
             "💻 Capacidad Tecnológica",
-            "🔮 Proyecciones",
+            "🔮 Predicciones",
             "🏛 Impacto Organizacional",
             "📝 Certificación",
             "🤝 Compromiso",
@@ -213,7 +213,7 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     
                     with st.expander("📊 Ver detalles por item"):
                         st.dataframe(datos_combinados[['Tipo_Dataset', 'Nombre_Original', 'Avance %', 'Avance_Predicho', 'Diferencia']].sort_values('Diferencia'))
-        
+
         # 2. Análisis y Monitoreo
         with tab2:
             st.header("📈 Análisis y Monitoreo")
@@ -221,7 +221,7 @@ if uploaded_cat or uploaded_proy or uploaded_func:
             **¿Qué analiza?**  
             Proporciona una visión en tiempo real del desempeño presupuestario y alertas sobre posibles desviaciones.
             """)
-            
+
             if st.button("Realizar Análisis", key="mon_btn"):
                 with st.spinner('Analizando desempeño...'):
                     model, scaler = modelos['analisis_monitoreo']
@@ -229,14 +229,41 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     X = X.fillna(0)
                     X_scaled = scaler.transform(X)
                     pim_predicho = model.predict(X_scaled)
-                                        
+
                     datos_combinados['PIM_Predicho'] = pim_predicho
                     datos_combinados['Error_Soles'] = datos_combinados['PIM'] - datos_combinados['PIM_Predicho']
                     datos_combinados['Error_Absoluto_Soles'] = datos_combinados['Error_Soles'].abs().fillna(0)
-                                  
+
+                    st.subheader("📌 Valores PIA Y PIM (Suma Total) por Año")
+                    años_referencia = {
+                        2019: {'PIA': 21349738, 'PIM': 35668999},
+                        2020: {'PIA': 19461375, 'PIM': 37380583},
+                        2021: {'PIA': 17086331, 'PIM': 47355258},
+                        2022: {'PIA': 32231260, 'PIM': 106494985},
+                        2023: {'PIA': 49927800, 'PIM': 90106666},
+                        2024: {'PIA': 59014885, 'PIM': 104240404}
+                    }
+
+                    # Filtrar años existentes en los datos
+                    años_presentes = datos_combinados['Año'].unique()
+
+                    # Crear columnas para mostrar los valores
+                    cols = st.columns(3)
+                    col_idx = 0
+
+                    for año in sorted(años_presentes):
+                        if año in años_referencia:
+                            with cols[col_idx % 3]:
+                                st.markdown(f"""
+                                            **Año {año}**  
+                                            PIA: S/ {años_referencia[año]['PIA']:,}  
+                                            PIM: S/ {años_referencia[año]['PIM']:,}
+                                            """)
+                                col_idx += 1
+
                     umbral_error = 0.5 * datos_combinados['PIM'].abs().mean()
                     outliers = datos_combinados[datos_combinados['Error_Absoluto_Soles'] > umbral_error]
-                    
+
                     st.subheader("🔍 Resumen de Desviaciones")
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -245,30 +272,31 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                         st.metric("PIM Predicho (Modelo)", f"S/ {datos_combinados['PIM_Predicho'].mean():,.0f}")
                     with col3:
                         st.metric("Desviación Promedio", f"S/ {datos_combinados['Error_Absoluto_Soles'].mean():,.0f}")
-                    
+
                     if not outliers.empty:
                         st.error(f"⚠️ Alertas: Se detectaron {len(outliers)} proyectos con desviacións significativas.")
                         with st.expander("📋 Detalles de proyectos con desviación"):
-                            required_cols = ['Tipo_Dataset', 'Nombre_Original', 'PIA', 'PIM', 'PIM_Predicho', 'Error_Soles']
+                            required_cols = ['Tipo_Dataset', 'Nombre_Original', 'PIA', 'PIM', 'PIM_Predicho',
+                                             'Error_Soles']
                             available_cols = [col for col in required_cols if col in outliers.columns]
-                            st.dataframe( 
+                            st.dataframe(
                                 outliers[available_cols].sort_values('Error_Soles', ascending=False)
                                 .style.format({
                                     'PIA': 'S/ {:,.0f}',
                                     'PIM': 'S/ {:,.0f}',
                                     'PIM_Predicho': 'S/ {:,.0f}',
                                     'Error_Soles': 'S/ {:,.0f}',
-                              })
+                                })
                             )
                     else:
                         st.success("✅ No se detectaron errores significativos en las predicciones")
-        
+
                     st.subheader("Recomendaciones")
                     st.info("""
                     **Para proyectos con alta desviación:**  
                     🔹 **Error positivo (PIM > Predicho):** Fondos no utilizados eficientemente. 
                     
-                    🔹 **Error negativo (PIM < Predicho):** Posible subfinanciamiento.         
+                    🔹 **Error negativo (PIM < Predicho):** Posible recursos no utilizados predictivamente.         
                     
                     **Pasos siguientes:**  
                     🔹 Revisar los proyectos listados en alertas. 
@@ -310,6 +338,10 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     
                     st.subheader("Todos los items recomendados para priorizar")
                     items_priorizar = datos_combinados[datos_combinados['Recomendacion'] == 'Priorizar']
+                    st.dataframe(items_priorizar[['Tipo_Dataset', 'Nombre_Original', 'Prob_Exito', 'Recomendacion']])
+                    
+                    st.subheader("Todos los items recomendados para revisar")
+                    items_priorizar = datos_combinados[datos_combinados['Recomendacion'] == 'Revisar']
                     st.dataframe(items_priorizar[['Tipo_Dataset', 'Nombre_Original', 'Prob_Exito', 'Recomendacion']])
                     
                     st.subheader("Guía de Acción")
@@ -354,41 +386,101 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     
         # 5. Proyecciones
         with tab5:
-            st.header("🔮 Proyecciones Presupuestarias")
+            st.header("🔮 Predicciones Presupuestarias")
             st.markdown("""
             **¿Qué analiza?**  
-            Predice ejecuciones presupuestarias futuras utilizando Machine Learning para mejorar la planificación financiera.
+            Predice ejecuciones presupuestarias utilizando Machine Learning para mejorar la planificación financiera.
             """)
-    
-            if st.button("Generar Proyecciones", key="proy_btn"):
-                with st.spinner('Generando proyecciones presupuestarias...'):
+
+            if st.button("Generar Predicciones", key="proy_btn"):
+                with st.spinner('Generando predicciones...'):
                     model, scaler = modelos['proyecciones_presupuestarias']
+
+                    # Preparar datos
                     X = datos_combinados[['PIA', 'Año', 'Tipo_Dataset_encoded', 'Nombre_encoded']]
                     X_scaled = scaler.transform(X)
+
+                    # Generar predicciones
                     predicciones = model.predict(X_scaled)
-                    
-                    columnas_pred = ['PIM_Predicho', 'Compromiso_Predicho', 'Certificacion_Predicha', 'Devengado_Predicho', 'Girado_Predicho', 'Avance_Porcentaje_Predicho']
-        
-                    predicciones_df = pd.DataFrame(predicciones, columns=columnas_pred)
-                    predicciones_df['Tipo_Dataset'] = datos_combinados['Tipo_Dataset'].values
-                    predicciones_df['Nombre_Original'] = datos_combinados['Nombre_Original'].values
-                    predicciones_df['Año'] = datos_combinados['Año'].values
-                    
-                    predicciones_df = predicciones_df[['Tipo_Dataset', 'Nombre_Original', 'Año'] + columnas_pred]
-                    
-                    st.subheader("📋 Proyecciones Generadas")
+
+                    # Crear DataFrame de predicciones
+                    columnas_pred = [
+                        'PIM_Predicho',
+                        'Compromiso_Predicho',
+                        'Certificacion_Predicha',
+                        'Devengado_Predicho',
+                        'Girado_Predicho',
+                        'Avance_Porcentaje_Predicho'
+                    ]
+
+                    predicciones_df = pd.DataFrame(predicciones, columns=columnas_pred).reset_index(drop=True)
+
+                    # Añadir metadatos
+                    metadatos = datos_combinados[['Tipo_Dataset', 'Nombre_Original', 'Año']].reset_index(drop=True)
+                    predicciones_df = pd.concat([metadatos, predicciones_df], axis=1)
+
+                    # Preparar datos reales
+                    real_data = datos_combinados[[
+                        'PIM',
+                        'Compromiso Anual',
+                        'Certificación',
+                        'Ejecución_Devengado',
+                        'Ejecución_Girado',
+                        'Avance %'
+                    ]].reset_index(drop=True)
+
+                    real_data.columns = [
+                        'PIM_Real',
+                        'Compromiso_Real',
+                        'Certificacion_Real',
+                        'Devengado_Real',
+                        'Girado_Real',
+                        'Avance_Porcentaje_Real'
+                    ]
+
+                    # Combinar predicciones y datos reales
+                    resultados_completos = pd.concat([predicciones_df, real_data], axis=1)
+
+                    # Ordenar columnas para comparación
+                    column_order = [
+                        'Tipo_Dataset',
+                        'Nombre_Original',
+                        'Año',
+                        'PIM_Predicho', 'PIM_Real',
+                        'Compromiso_Predicho', 'Compromiso_Real',
+                        'Certificacion_Predicha', 'Certificacion_Real',
+                        'Devengado_Predicho', 'Devengado_Real',
+                        'Girado_Predicho', 'Girado_Real',
+                        'Avance_Porcentaje_Predicho', 'Avance_Porcentaje_Real'
+                    ]
+
+                    # Mostrar resultados
+                    st.subheader("📊 Comparativa: Predicciones vs Realidad")
+
+                    # Formatear y mostrar tabla
                     st.dataframe(
-                        predicciones_df.style.format({
+                        resultados_completos[column_order].style.format({
                             'PIM_Predicho': 'S/ {:,.0f}',
+                            'PIM_Real': 'S/ {:,.0f}',
                             'Compromiso_Predicho': 'S/ {:,.0f}',
+                            'Compromiso_Real': 'S/ {:,.0f}',
                             'Certificacion_Predicha': 'S/ {:,.0f}',
+                            'Certificacion_Real': 'S/ {:,.0f}',
                             'Devengado_Predicho': 'S/ {:,.0f}',
+                            'Devengado_Real': 'S/ {:,.0f}',
                             'Girado_Predicho': 'S/ {:,.0f}',
-                            'Avance_Porcentaje_Predicho': '{:,.2f} %'
-                        })
+                            'Girado_Real': 'S/ {:,.0f}',
+                            'Avance_Porcentaje_Predicho': '{:,.2f}%',
+                            'Avance_Porcentaje_Real': '{:,.2f}%'
+                        }).bar(
+                            subset=['Avance_Porcentaje_Predicho', 'Avance_Porcentaje_Real'],
+                            color='#5fba7d'
+                        ),
+                        height=500,
+                        use_container_width=True
                     )
-                    
-                st.success("✅ Predicciones generadas correctamente.")
+
+                    st.success("✅ Predicciones generadas exitosamente con comparativa de datos reales")
 
         # 6. Impacto Organizacional
         with tab6:
@@ -419,22 +511,58 @@ if uploaded_cat or uploaded_proy or uploaded_func:
             **¿Qué analiza?**  
             Detecta discrepancias en los procesos de certificación presupuestaria mediante Machine Learning.
             """)
-    
+
             if st.button("Detectar Discrepancias en Certificación", key="cert_btn"):
                 with st.spinner('Analizando discrepancias de certificación...'):
                     model = modelos['certificacion']
                     X = datos_combinados[['PIA', 'PIM', 'Año', 'Tipo_Dataset_encoded', 'Nombre_encoded']]
-                    y_pred = model.predict(X)
-            
-                    datos_combinados['Discrepancia_Certificacion_Predicha'] = y_pred
-                    
-                    datos_combinados['Discrepancia_Real'] = (datos_combinados['Certificación'] - datos_combinados['PIM']).abs()
-                           
-                    st.subheader("Top 10 Discrepancias en Certificación")
-                    st.dataframe(datos_combinados[['Tipo_Dataset', 'Nombre_Original', 'Certificación', 'PIM', 'Discrepancia_Real', 'Discrepancia_Certificacion_Predicha']].sort_values('Discrepancia_Certificacion_Predicha', ascending=False).head(10))
-                    
-                    top_discrepancias = datos_combinados[['Nombre_Original', 'Discrepancia_Certificacion_Predicha']].sort_values('Discrepancia_Certificacion_Predicha', ascending=False).head(10)
-                    st.bar_chart(top_discrepancias.set_index('Nombre_Original')['Discrepancia_Certificacion_Predicha'])                    
+
+                    # Generar predicciones
+                    certificacion_predicha = model.predict(X)
+
+                    # Añadir columnas al DataFrame
+                    datos_combinados['Certificación_Predicha'] = certificacion_predicha
+                    datos_combinados['Discrepancia_Real'] = (
+                                datos_combinados['Certificación'] - datos_combinados['Certificación_Predicha']).abs()
+
+                    # Ordenar por mayor discrepancia
+                    top_discrepancias = datos_combinados.sort_values('Discrepancia_Real', ascending=False).head(10)
+
+                    # Mostrar resultados
+                    st.subheader("🔍 Top 10 Discrepancias en Certificación")
+
+                    # Crear y formatear tabla
+                    columnas_mostrar = [
+                        'Tipo_Dataset',
+                        'Nombre_Original',
+                        'PIM',
+                        'Certificación',
+                        'Certificación_Predicha',
+                        'Discrepancia_Real'
+                    ]
+
+                    st.dataframe(
+                        top_discrepancias[columnas_mostrar].style.format({
+                            'PIM': 'S/ {:,.0f}',
+                            'Certificación': 'S/ {:,.0f}',
+                            'Certificación_Predicha': 'S/ {:,.0f}',
+                            'Discrepancia_Real': 'S/ {:,.0f}'
+                        }),
+                        height=400
+                    )
+
+                    # Gráfico comparativo
+                    st.subheader("📈 Comparación Certificación Real vs Predicha")
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    top_discrepancias.set_index('Nombre_Original')[['Certificación', 'Certificación_Predicha']].plot(
+                        kind='bar',
+                        ax=ax,
+                        color=['#1f77b4', '#ff7f0e']
+                    )
+                    plt.title('Top 10 Discrepancias en Certificación')
+                    plt.ylabel('Monto (S/)')
+                    plt.xticks(rotation=45, ha='right')
+                    st.pyplot(fig)
 
         # 8. Compromiso
         with tab8:
@@ -471,6 +599,15 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     st.subheader("Comparación entre porcentaje de compromiso real y predicho")
                     top_compromisos = datos_combinados[['Nombre_Original', 'Porcentaje_Compromiso', 'Porcentaje_Compromiso_Predicho']].sort_values('Porcentaje_Compromiso_Predicho', ascending=False).head(10)
                     st.bar_chart(top_compromisos.set_index('Nombre_Original')[['Porcentaje_Compromiso', 'Porcentaje_Compromiso_Predicho']])
+
+                    st.subheader("Recomendaciones")
+                    st.info("""
+                    🔹 Si la Diferencia de Compromiso es menor e igual que 5%: Es Alta
+                    
+                    🔹 Si la Diferencia de Compromiso es menor e igual que 15%: Es Media
+                    
+                    🔹 Si la Diferencia de Compromiso es mayor que 15%: Es Baja
+                    """)
 
                     st.success("✅ Monitoreo de compromisos completado")
 
