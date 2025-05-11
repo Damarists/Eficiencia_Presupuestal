@@ -183,7 +183,7 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     datos_combinados['Avance_Predicho'] = y_pred
                     datos_combinados['Diferencia'] = datos_combinados['Avance %'] - datos_combinados['Avance_Predicho']
                     
-                    st.subheader("Resultados por Tipo de Datos")
+                    st.subheader("Resultados por el Avance de Ejecución Promedio")
                     
                     cols = st.columns(3)
                     for i, (tipo, df) in enumerate(datos_combinados.groupby('Tipo_Dataset')):
@@ -345,7 +345,11 @@ if uploaded_cat or uploaded_proy or uploaded_func:
                     st.dataframe(items_priorizar[['Tipo_Dataset', 'Nombre_Original', 'Prob_Exito', 'Recomendacion']])
                     
                     st.subheader("Guía de Acción")
+                    st.info("""**Nota:**
+                    Los que se encuentran en la sección de Priorizar son los que primero han pasado por un filtro en el que su avance de ejecución ha sido mayor a 80% y los de revisión su avance de ejecución es menor a 80%.
+                    """)
                     st.success("""
+                    
                     **Para items 'Priorizar':**  
                     🔹 Asignar recursos según lo planeado  
                     🔹 Mantener seguimiento estándar  
@@ -500,6 +504,15 @@ if uploaded_cat or uploaded_proy or uploaded_func:
             
                     st.subheader("Resultados de Aceptación Institucional")
                     st.dataframe(datos_combinados[['Tipo_Dataset', 'Nombre_Original', 'Aceptacion_Predicha']])
+
+                    st.subheader("Notas sobre la Aceptación Institucional")
+                    st.info("""
+                     🔹 1: Avance de Ejecución Presupuestal mayor a 80%
+                     
+                     🔹 0.5: Avance de Ejecución Presupuestal entre 50% y 80%
+                     
+                     🔹 0: Avance de Ejecución Presupuestal menor a 50%
+                    """)
             
                     st.success("✅ Impacto organizacional evaluado")
                     
